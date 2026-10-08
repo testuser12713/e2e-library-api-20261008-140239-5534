@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
 from app.db import get_sessionmaker
 from app.models.loan import Loan
@@ -22,18 +23,29 @@ def _book(**overrides: object) -> dict[str, object]:
     return payload
 
 
-def _add_loan(book_id: int) -> None:
+def _add_loan(book_id: int) -> int:
     """Insert a loan row so the book is referenced by a historical loan."""
 
     session = get_sessionmaker()()
     try:
-        session.add(
-            Loan(
-                book_id=book_id,
-                member_id=1,
-                due_at=datetime.now(UTC) + timedelta(days=14),
-            )
+        loan = Loan(
+            book_id=book_id,
+            member_id=1,
+            due_at=datetime.now(UTC) + timedelta(days=14),
         )
+        session.add(loan)
+        session.commit()
+        return loan.id
+    finally:
+        session.close()
+
+
+def _remove_loan(loan_id: int) -> None:
+    """Delete the loan this test module inserted, keeping the shared DB clean."""
+
+    session = get_sessionmaker()()
+    try:
+        session.execute(delete(Loan).where(Loan.id == loan_id))
         session.commit()
     finally:
         session.close()
@@ -188,8 +200,11 @@ def test_delete_book_referenced_by_loan_is_409(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
     created = client.post("/books", json=_book(isbn="isbn-ref-1"), headers=auth_headers).json()
-    _add_loan(created["id"])
-    response = client.delete(f"/books/{created['id']}", headers=auth_headers)
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "referenced_by_loans"
-    assert client.get(f"/books/{created['id']}").status_code == 200
+    loan_id = _add_loan(created["id"])
+    try:
+        response = client.delete(f"/books/{created['id']}", headers=auth_headers)
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "referenced_by_loans"
+        assert client.get(f"/books/{created['id']}").status_code == 200
+    finally:
+        _remove_loan(loan_id)
