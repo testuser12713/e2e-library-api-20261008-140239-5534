@@ -1,18 +1,15 @@
-"""Member CRUD routes (declarations only; bodies owned by the member-CRUD ticket)."""
+"""Member CRUD routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, require_api_key
 from app.pagination import PaginationParams, pagination_params
 from app.schemas.common import Page
 from app.schemas.member import MemberCreate, MemberRead, MemberUpdate
+from app.services import members as member_service
 
 router = APIRouter(prefix="/members", tags=["members"])
-
-
-def _not_implemented(route: str) -> HTTPException:
-    return HTTPException(status_code=501, detail=f"{route} is not implemented yet")
 
 
 @router.post(
@@ -22,7 +19,7 @@ def _not_implemented(route: str) -> HTTPException:
     dependencies=[Depends(require_api_key)],
 )
 def create_member(data: MemberCreate, db: Session = Depends(get_db)) -> MemberRead:
-    raise _not_implemented("POST /members")
+    return MemberRead.model_validate(member_service.create_member(db, data))
 
 
 @router.get("", response_model=Page[MemberRead])
@@ -30,12 +27,12 @@ def list_members(
     params: PaginationParams = Depends(pagination_params),
     db: Session = Depends(get_db),
 ) -> Page[MemberRead]:
-    raise _not_implemented("GET /members")
+    return member_service.list_members(db, params)
 
 
 @router.get("/{member_id}", response_model=MemberRead)
 def get_member(member_id: int, db: Session = Depends(get_db)) -> MemberRead:
-    raise _not_implemented("GET /members/{member_id}")
+    return MemberRead.model_validate(member_service.get_member(db, member_id))
 
 
 @router.put(
@@ -44,7 +41,7 @@ def get_member(member_id: int, db: Session = Depends(get_db)) -> MemberRead:
     dependencies=[Depends(require_api_key)],
 )
 def replace_member(member_id: int, data: MemberCreate, db: Session = Depends(get_db)) -> MemberRead:
-    raise _not_implemented("PUT /members/{member_id}")
+    return MemberRead.model_validate(member_service.replace_member(db, member_id, data))
 
 
 @router.patch(
@@ -53,7 +50,7 @@ def replace_member(member_id: int, data: MemberCreate, db: Session = Depends(get
     dependencies=[Depends(require_api_key)],
 )
 def update_member(member_id: int, data: MemberUpdate, db: Session = Depends(get_db)) -> MemberRead:
-    raise _not_implemented("PATCH /members/{member_id}")
+    return MemberRead.model_validate(member_service.update_member(db, member_id, data))
 
 
 @router.delete(
@@ -62,4 +59,4 @@ def update_member(member_id: int, data: MemberUpdate, db: Session = Depends(get_
     dependencies=[Depends(require_api_key)],
 )
 def delete_member(member_id: int, db: Session = Depends(get_db)) -> None:
-    raise _not_implemented("DELETE /members/{member_id}")
+    member_service.delete_member(db, member_id)
