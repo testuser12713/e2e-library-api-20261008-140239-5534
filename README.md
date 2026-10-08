@@ -92,7 +92,7 @@ curl -X POST http://localhost:8000/books \
 Jede Nicht-2xx-Antwort hat denselben Aufbau:
 
 ```json
-{"error": {"code": "validation_error", "message": "Validation failed", "details": [{"field": "year", "message": "Input should be greater than or equal to 1000"}]}}
+{"error": {"code": "validation_error", "message": "Validation failed", "details": [{"field": "year", "message": "Input should be greater than or equal to 1450"}]}}
 ```
 
 Mögliche Codes: `unauthorized`, `not_found`, `validation_error`,

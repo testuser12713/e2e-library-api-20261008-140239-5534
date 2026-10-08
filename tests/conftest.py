@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 import tempfile
 from collections.abc import Iterator
 
@@ -11,7 +12,8 @@ from fastapi.testclient import TestClient
 
 _TEMP_DIR = tempfile.mkdtemp(prefix="library-api-tests-")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DIR}/test.db"
-os.environ["API_KEY"] = "test-api-key"
+# Rolled per run so no API key value ever lives in the repository.
+os.environ["API_KEY"] = secrets.token_hex(32)
 
 
 @pytest.fixture()
