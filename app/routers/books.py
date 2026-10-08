@@ -1,16 +1,31 @@
-"""Book CRUD routes (declarations only; bodies owned by the book-CRUD ticket)."""
+"""Book CRUD routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, require_api_key
+from app.models.book import Book
 from app.schemas.book import BookCreate, BookRead, BookUpdate
+from app.services import books as books_service
+from app.services.availability import available_copies
 
 router = APIRouter(prefix="/books", tags=["books"])
 
 
-def _not_implemented(route: str) -> HTTPException:
-    return HTTPException(status_code=501, detail=f"{route} is not implemented yet")
+def _to_read(db: Session, book: Book) -> BookRead:
+    """Render a book, including its currently free copies."""
+
+    return BookRead(
+        id=book.id,
+        title=book.title,
+        author=book.author,
+        isbn=book.isbn,
+        year=book.year,
+        copies=book.copies,
+        available_copies=available_copies(db, book),
+    )
 
 
 @router.post(
@@ -20,12 +35,14 @@ def _not_implemented(route: str) -> HTTPException:
     dependencies=[Depends(require_api_key)],
 )
 def create_book(data: BookCreate, db: Session = Depends(get_db)) -> BookRead:
-    raise _not_implemented("POST /books")
+    book = books_service.create_book(db, data)
+    return _to_read(db, book)
 
 
 @router.get("/{book_id}", response_model=BookRead)
 def get_book(book_id: int, db: Session = Depends(get_db)) -> BookRead:
-    raise _not_implemented("GET /books/{book_id}")
+    book = books_service.get_book(db, book_id)
+    return _to_read(db, book)
 
 
 @router.put(
@@ -34,7 +51,8 @@ def get_book(book_id: int, db: Session = Depends(get_db)) -> BookRead:
     dependencies=[Depends(require_api_key)],
 )
 def replace_book(book_id: int, data: BookCreate, db: Session = Depends(get_db)) -> BookRead:
-    raise _not_implemented("PUT /books/{book_id}")
+    book = books_service.replace_book(db, book_id, data)
+    return _to_read(db, book)
 
 
 @router.patch(
@@ -43,7 +61,8 @@ def replace_book(book_id: int, data: BookCreate, db: Session = Depends(get_db)) 
     dependencies=[Depends(require_api_key)],
 )
 def update_book(book_id: int, data: BookUpdate, db: Session = Depends(get_db)) -> BookRead:
-    raise _not_implemented("PATCH /books/{book_id}")
+    book = books_service.update_book(db, book_id, data)
+    return _to_read(db, book)
 
 
 @router.delete(
@@ -52,4 +71,4 @@ def update_book(book_id: int, data: BookUpdate, db: Session = Depends(get_db)) -
     dependencies=[Depends(require_api_key)],
 )
 def delete_book(book_id: int, db: Session = Depends(get_db)) -> None:
-    raise _not_implemented("DELETE /books/{book_id}")
+    books_service.delete_book(db, book_id)
